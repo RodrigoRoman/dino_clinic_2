@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+    
+
+<head>
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'nonce-randomNonceHere' https://cdn.jsdelivr.net/npm/bs-custom-file-input/dist/">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dino Clinic</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/css/bootstrap.min.css"
+        integrity="sha384-r4NyP46KrjDleawBgD5tp8Y7UzmLA05oM1iAEQ17CSuDqnUK2+k9luXQOfXJCJ4I" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bs-custom-file-input/dist/bs-custom-file-input.js"></script>
+    <script src="/javascripts/jquery-3.2.1.min.js"></script>
+    <link rel="stylesheet" href="/stylesheets/app.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+</head>
+<%
+function makeDMY(date){
+  const newDate = {d:date.getUTCDate(), m : date.getUTCMonth()+1,// JavaScript months are 0-11
+  y : date.getUTCFullYear()};
+  return  ((newDate.d.toString().length>1)?newDate.d:"0"+newDate.d)+ "/" + newDate.m+ "/" + newDate.y;
+}
+function makeDMYHour(date){
+  const newDate = {d:date.getUTCDate(), m : date.getUTCMonth()+1,// JavaScript months are 0-11
+  y : date.getUTCFullYear(),h:date.getUTCHours(), min:(((""+date.getUTCMinutes()).length>1)?date.getUTCMinutes():"0"+date.getUTCMinutes())};
+  return  ((newDate.d.toString().length>1)?newDate.d:"0"+newDate.d)+ "/" + newDate.m+ "/" + newDate.y+ "   "+newDate.h+":"+newDate.min;
+}
+
+
+//Array with supplies to be refilled
+let refill_location = {};
+transactions.forEach(element => {
+    console.log('element')
+    console.log(element)
+    if(element.service.service_type == "supply"){
+    let trans = { 
+            name: element.service.name,
+            class: element.service.class,
+            consumtionDate: element.consumtionDate,
+            principle: element.service.principle,
+            expiration: element.service.expiration,
+            amount: element.amount,
+            location: element.location,
+            author:element.addedBy.username,
+            <!-- patient: element.patient.name -->
+                }
+                console.log('transacton')
+                console.log(trans)
+    if(element.location in refill_location){
+        refill_location[element.location].push(trans);
+    }else{
+        refill_location[element.location] = [trans]
+    }
+}
+});
+for(let zone in refill_location){
+    refill_location[zone]= refill_location[zone].sort((a,b)=>a.class.localeCompare(b.class,"es",{sensitivity:'base'}));
+    let prev_c = '';
+    let zone_order_list = [];
+    let class_sort_list = [];
+    for(let tr of refill_location[zone]){
+        if(prev_c != tr.class){
+            prev_c = tr.class;
+            zone_order_list = zone_order_list.concat(class_sort_list.sort((a,b)=>a.name.localeCompare(b.name,"es",{sensitivity:'base'})));
+            class_sort_list = [];
+        }
+        class_sort_list.push(tr)
+    }
+    zone_order_list = zone_order_list.concat(class_sort_list.sort((a,b)=>a.name.localeCompare(b.name,"es",{sensitivity:'base'})));
+    refill_location[zone] = zone_order_list;
+}
+%>
+ <%- include('../partials/navbar')%>
+    <body>
+        <main class="container mt-5">
+        <%if(!paused){%>
+            <div class="row">
+                <div class="col text-start">
+                    <button class="btn btn-danger toggleButton">Pausar registro de productos</button>
+                </div>
+            </div>
+        <%}else{%>
+            <div class="row">
+                <div class="col text-start">
+                    <button class="btn btn-success toggleButton">Activar registro de productos</button>
+                </div>
+            </div>
+        <%}%>
+
+        <div class="d-flex main justify-content-center align-items-center mb-4 mt-4">
+            <div class="ml-2">
+                <label for="primarySort">Orden Primario</label>
+                <br>
+                <select id="primarySort" class="btn btn-outline-secondary btn-lg custom-select " style="max-width: 300px">
+                    <option value="location">Stock (Ubicacion)</option>
+                    <option value="serviceData.class">Categoria</option>
+                    <option value="userData.username">Agregado por</option>
+                    <option value="patientData.name">Paciente</option>
+                </select>
+            </div>
+            <div class="ml-2">
+                <label for="secondarySort">Orden Secundario</label>
+                <br>
+                <select id="secondarySort" class="btn btn-outline-secondary btn-lg custom-select" style="max-width: 300px">
+                    <option value="serviceData.class">Clase</option>
+                    <option value="serviceData.name">Nombre</option>
+                    <option value="consumtionDate">Horario</option>
+                    <option value="location">Stock (Ubicacion)</option>
+                    <option value="userData.username">Agregado por</option>
+                    <option value="patientData.name">Paciente</option>
+                </select>
+            </div>
+        </div>
+        <div class = "tableContent">
+            <div class="jumbotron"style="overflow: auto;">
+                <div class = "m-4 p-4">
+                    <%  for (const property in refill_location) {%>
+                    <table class="table table-borderless sticky1" id="simple_table_<%=property%>">
+                            <thead class="thead-dark">
+                                <tr class="border-bottom border-dark">  
+                                    <th scope ="col"><h3></h3></th>
+                                    <th scope="col"><h3><%=property%></h3></th>  
+                                    <th scope="col"><h3></h3></th>
+                                </tr>  
+                            </thead>
+                            <tbody>
+                                <tr>  
+                                    <th>Nombre</th> 
+                                    <th>Principio</th> 
+                                    <th>Caducidad</th> 
+                                    <th>Cantidad</th>  
+                                    <th>Agregado</th>
+                                    <th>Usuario</th>
+                                    <th>Paciente</th>
+                                    <th>Ubicacion</th>
+                                </tr>
+                            <%
+                            refill_location[property].forEach(function(item,index){%>
+                                <%console.log(item)%>
+                                <tr>  
+                                    <!-- <td><%=item.name%></td>  -->
+                                    <td><%=item.principle%></td>
+                                    <!-- <td><%=makeDMY(new Date(item.expiration))%></td>     -->
+                                    <td><%=item.amount%></td>  
+                                    <!-- <td><%=makeDMYHour(new Date(item.consumtionDate))%></td>   -->
+                                    <td><%=item.author%></td> 
+                                    <td><%=item.patient%></td>
+                                    <td><%=item.location%></td>
+                                </tr> 
+                            <%})%>
+                            </tbody> 
+                        </table> 
+                        <div class="container">
+                                    <div class="row">
+                                        <div class="col">
+                                            <button type="button" class="btn btn-primary"><i class="fas fa-print"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-secondary" onclick="generatePDF('simple_table_<%=property%>')"><i class="fas fa-file-pdf"></i></button>
+                                            <button type="button" class="btn btn-danger"><i class="fas fa-sync-alt"></i></button>
+                                        </div>
+                                    </div>
+                                </div>
+                    <%}%>
+                </div>
+            </div>
+        </div> 
+
+        <div class="container justify-content-center mb-4">
+            <div class="row ">
+                <div class="col  d-flex justify-content-center">
+                    <button id="printAll" type="button" class="btn btn-primary mx-2"><i class="fas fa-print"></i> Imprimir todo
+                    </button>
+                    <button type="resetAll" id="resetButton" class="btn btn-danger mx-2">
+                        <i class="fas fa-sync-alt"></i> Reiniciar todo
+                      </button>
+                </div>
+            </div>
+        </div> 
+        </main>
+    <script src="/javascripts/refill_form.js" ></script>
+
+ </body> 
+
+ 
+</html>
+

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dino Clinic</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/css/bootstrap.min.css"
+        integrity="sha384-r4NyP46KrjDleawBgD5tp8Y7UzmLA05oM1iAEQ17CSuDqnUK2+k9luXQOfXJCJ4I" crossorigin="anonymous">
+    <link rel="stylesheet" href="/stylesheets/home.css">
+    <link rel="stylesheet" href="/stylesheets/app.css">
+    <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs@master/qrcode.min.js"></script>
+</head>
+
+<body class="d-flex text-center text-white bg-dark">
+    <%
+    Array.prototype.sample = function(){
+        return this[Math.floor(Math.random()*this.length)];
+    }
+    let phrases = ["Una vida a tu servicio","La cultura de la mente debe estar al servicio del corazon",
+    "El que no vive para servir no sirve para vivir", "El servicio a otros es la renta que pagas por tu cuarto aqui en la tierra",
+"El verdadero poder es el servicio","Hay que poner la inteligencia al servicio del amor",
+"Para encontrarse a uno mismo hay perderse en el servicio a los demas",
+"El servicio a los demas en su momento de necesidad es un privilegio y un honor","El compromiso es un acto, no una palabra",
+"Las cosas buenas en el mundo nacen de una actitud de aprecio por los demas."]
+    %>
+    <div class="cover-container d-flex w-100 h-100 p-3 mx-auto flex-column">
+        <header class="mb-auto">
+            <div>
+                <h3 class="float-md-left mb-0">Dino Clinic</h3>
+                
+            </div>
+        </header>
+        
+        <main class="px-3">
+            <p><i>"<%=phrases.sample()%>"</i></p>
+           <% if(currentUser) {%>
+            <div class="container my-5">
+                <div class="row">
+                    <div class="col-sm-4">
+                        <a href="/patients" class="grid-item">
+                            <lottie-player src="/lotties/patients_hosp.json" background="transparent" speed="1" style="width: 250px; height: 100px;" loop autoplay></lottie-player>
+                            <p class="text-center">Pacientes</p>
+                        </a>
+                    </div>
+                    <% if((currentUser.role == 'directAdmin')||(currentUser.role == 'caja')){%>
+                    <div class="col-sm-4">
+                        <a href="/exits/refill" class="grid-item">
+                            <lottie-player src="/lotties/consum_list.json" background="transparent" speed="1" style="width: 250px; height: 100px;" loop autoplay></lottie-player>
+                            <p class="text-center">Lista de consumo</p>
+                        </a>
+                    </div>
+                    <div class="col-sm-4">
+                        <a href="/exits/payments" class="grid-item">
+                            <lottie-player src="/lotties/pagos.json" background="transparent" speed="1" style="width: 200px; height: 100px;" loop autoplay></lottie-player>
+                            <p class="text-center">Pagos</p>
+                        </a>
+                    </div>
+                    <%}%>
+                    <% if((currentUser.role == 'directAdmin')||(currentUser.role == 'caja')){%>
+                        <div class="col-sm-4">
+                            <a href="/services/supply" class="grid-item">
+                            <lottie-player src="/lotties/medicine_inventory.json" background="transparent" speed="1" style="width: 250px; height: 100px;" loop autoplay></lottie-player>
+                            <p class="text-center">Inventario</p>
+                            </a>
+                        </div>
+                        <div class="col-sm-4">
+                            <a href="/services/generateQr" class="grid-item">
+                                <lottie-player src="/lotties/prices_aba.json" background="transparent" speed="1" style="width: 250px; height: 100px;" loop autoplay></lottie-player>
+                                <p class="text-center">Precios</p>
+                            </a>
+                        </div>
+                        <div class="col-sm-4">
+                            <a href="/services/hospital" class="grid-item">
+                                <lottie-player src="/lotties/servicios_medicos.json" background="transparent" speed="1" style="width: 250px; height: 100px;" loop autoplay></lottie-player>
+                                <p class="text-center">Servicios medicos</p>
+                            </a>
+                        </div>
+                        <% if(currentUser.role == 'directAdmin'){%>
+
+                        <div class="col-sm-4">
+                            <a href="/exits/box" class="grid-item">
+                                <lottie-player src="/lotties/money_box.json" background="transparent" speed="1" style="width: 250px; height: 100px;" loop autoplay></lottie-player>
+                                <p class="text-center">Apartados de dinero</p>
+                            </a>
+                        </div>
+                        <%}%>
+                        <!-- /generateQ -->
+                    <%}%>
+                </div>
+            </div>
+            <%}%>
+          
+                 <div>
+            <% if(!currentUser) { %>
+                <div class="bt_container mb-2">
+                    <a class="bt bt--white" href="/login">Ingresar</a>
+                </div>
+                <div class="bt_container my-4">
+                    <a class="bt bt--white" href="/register">Registrarse</a>
+                </div>
+                <% } else { %>
+                <div class="bt_container my-5">
+                    <a class="bt bt--white" href="/logout">Salir</a>
+                </div>
+                <% } %>
+            </div>
+            
+        </main>
+        
+
+        <footer class="mt-auto text-white-50">
+            <p>&copy; 2023 </p>
+        </footer>
+
+
+    </div>
+
+
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"
+        integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo"
+        crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/js/bootstrap.min.js"
+        integrity="sha384-oesi62hOLfzrys4LxRF63OJCXdXDipiYWBnvTl9Y9/TRlw5xlKIEHpNyvvDShgf/"
+        crossorigin="anonymous"></script>
+</body>
+
+</html>

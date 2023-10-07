@@ -1,0 +1,371 @@
+
+<% layout('layouts/boilerplate')%>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+<script>
+  const patient_id = <%-str_id%>;  
+  const pat = '<%-JSON.stringify(patient)%>';
+  const currentUser = '<%-JSON.stringify(currentUser)%>';
+  const beginD = '<%-JSON.stringify(begin)%>';
+  const endD = '<%-JSON.stringify(end)%>';
+</script>
+<%if(resupplying){%>
+ <div class="container orange-container">
+  <p class="orange-text">Pausado por reabastecimiento</p>
+ </div>
+ <%}%>
+  <div class = ' d-flex justify-content-center align-items-center mb-4 mt-4'>
+    <div class="pop-up-container "><h5 class="display-3 font-weight-bold text-center" style="font-family: Helvetica, Arial, sans-serif; color: #4A4A4A; text-transform: uppercase; letter-spacing: 2px;  font-size: 40px"><%=patient.name%></h5> </div>
+  </div>
+  <div class="d-flex justify-content-center align-items-center mb-4 mt-4">
+    <select class="btn btn-outline-secondary btn-lg custom-select ml-2" id='department' name="department" style="max-width: 300px">
+      <option <%= currentUser.stockLocation == 'Vale' ? 'selected' : '' %> id="vale" value="Vale">Vale</option>
+        <option <%= currentUser.stockLocation == 'Central' ? 'selected' : '' %> id="central" value="Central">Central de enfermeria</option>
+        <option <%= currentUser.stockLocation == 'Urgencias' ? 'selected' : '' %> id="urgencias" value="Urgencias">Urgencias</option>
+        <option <%= currentUser.stockLocation == 'Quirofano' ? 'selected' : '' %> id="quirofano" value="Quirofano">Quirofano</option>
+        <option <%= currentUser.stockLocation == 'Farmacia1' ? 'selected' : '' %> id="farmacia1" value="Farmacia1">Farmacia1</option>
+        <option <%= currentUser.stockLocation == 'Farmacia2' ? 'selected' : '' %> id="farmacia2" value="Farmacia2">Farmacia2</option>
+        <option <%= currentUser.stockLocation == 'Bodega' ? 'selected' : '' %> id="bodega" value="Bodega">Bodega</option>
+    </select>
+
+    <select id="moneyBox" class="btn btn-outline-secondary btn-lg custom-select ml-2" name="moneyBox" style="max-width: 300px">
+      <% for (let box of boxes) {
+        %>
+          
+          <option <%= currentUser.moneyBox._id.equals(box._id) ? 'selected' : '' %>  id="<%= box._id %>" value="<%= box._id %>" data-hierarchy="<%= box.hierarchy %>"><%= box.name %></option>
+      <% } %>
+    </select>
+</div>
+<div class = "container">
+  <div class = "btn-group mr-2" id = "search_group">
+    <input class="input-group-text mr-2" id = "search_val" type="text" name="search" placeholder="Search" aria-label="Search">
+    <button class="btn btn-outline-success" id = "search" type="submit" data-toggle="modal" data-target="#exampleModalCenter"><i class="fas fa-search"></i></button> 
+  </div>
+  
+  <!-- //search preview table -->
+  <div id = "searchList">
+    <table class = "table" id = "searchTable">
+        <tbody>
+        </tbody>
+    </table>
+  </div>
+</div>
+<%
+function numberCommas(x) {
+    return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+function makeDMYHour(date){
+  const newDate = {d:date.getUTCDate(), m : date.getUTCMonth()+1,// JavaScript months are 0-11
+  y : date.getUTCFullYear(),h:date.getUTCHours(), min:(((""+date.getUTCMinutes()).length>1)?date.getUTCMinutes():"0"+date.getUTCMinutes())};
+  return  ((newDate.d.toString().length>1)?newDate.d:"0"+newDate.d)+ "/" + newDate.m+ "/" + newDate.y+ "   "+newDate.h+":"+newDate.min;
+}
+let currDate =new Date();
+
+let patientCar = [];
+let timeUnits = ["Hora","Dia"];
+let total = 0;
+      // Make a new object with amount to the same level as price, name and the other fields of servie
+      if(patient.servicesCar){
+       let serviceCar = (patient.servicesCar).map((el) =>{
+         if((el.consumtionDate>=begin) && (el.consumtionDate<=end)){return Object.assign(Object.assign({},el.service._doc),{
+          service_unit:el.service.unit,
+          relatedBox:el.relatedBox,trans_id:el._id,terminalDate:el.terminalDate,amount:el.amount,toggle:el.toggle,consumtionDate:el.consumtionDate,author:el.addedBy.username,discount:el.discount})}});
+      serviceCar = serviceCar.filter(el => el!= undefined);
+      patientCar = serviceCar.sort((a, b) => b.consumtionDate - a.consumtionDate);
+    }
+let nonTimeElements = patientCar.filter(el=>!(timeUnits.includes(el.unit)));
+
+let timeElements = patientCar.filter(el=>(timeUnits.includes(el.unit)));
+
+%> 
+<script>
+  const patientCar = <%- JSON.stringify(patientCar) %>;
+
+  const currUser = <%- JSON.stringify(currentUser) %>;
+</script>
+
+<div class="container" style="box-shadow: 0 0 30px rgba(0, 0, 0, 0.2); border-radius: 5px; ">
+  <div class="row align-items-center m-4 p-2">
+    <div class="col-auto">
+      <div class="btn-group mr-2" id="search_grp" style="display: flex;">
+        <input class="input-group-text mr-2" id="search_val_inside" type="text" name="search" placeholder="Buscar en cuenta" aria-label="Search" style="border-radius: 5px; padding: 5px;">
+        <button class="btn btn-outline-primary" id="searchInAccount" type="submit" style="border-radius: 5px; padding: 5px;"><i class="fas fa-search"></i></button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="row justify-content-center custom-container" id = "account-table">
+  <div class="col-12 overflow-auto ">
+    <table id="accountrStatus" class="table table-responsive-sm sticky1">
+      <thead>
+        <tr>
+          <th>Nombre
+          </th>
+          <th><small class = "text-muted">Clase<small>
+          </th>
+          <th>Cantidad
+          </th>
+          <%if(currentUser.role == "directAdmin" || currentUser.role == "dinamicAdmin"){%>
+            <th>Precio Unit
+            </th>
+          <%}%>
+          <th>Fecha cargo 
+          </th>
+          <th><small class = "text-muted">Agregado por</small>
+          </th>
+          <%if(currentUser.role == "directAdmin" || currentUser.role == "dinamicAdmin"||currentUser.role == "caja"){%>
+          <th><small class = "text-muted">Descuento</small>
+          </th>
+            <th>Subtotal
+            </th>
+            <th>
+              Caja
+            </th>
+          <%}else{%>
+            <th>Corregir
+            </th>
+          <%}%>
+        </tr>
+      </thead>
+
+      <tbody id = 'tableBody'>
+        <%for(let item of nonTimeElements){%>
+          <tr>
+            <td class= "item-name" alt = "<%=item._id%>"><%=item.name%></td>
+            <td ><small class = "text-muted" id="transID" alt = "<%=item.trans_id%>"><%=item.class%></small></td>
+            <td>X <span class = "item-amount"><%=(item.service_unit=='Dinamico')?1:item.amount%></span></td>
+            <%let price = (item.service_type == "supply")?item.sell_price:item.price %>
+            <%if(currentUser.role == "directAdmin" || currentUser.role == "dinamicAdmin"||currentUser.role == "caja"){%>
+              <td class = "item-price">$ <%=(item.service_unit=='Dinamico')? numberCommas(item.amount):numberCommas(price)%></td>
+            <%}%>
+            
+            <td class = "item-price"><%=makeDMYHour(new Date(item.consumtionDate))%></td>
+            <%
+            let subtotal = +(item.amount*(price-(price*(item.discount*0.01)))).toFixed(2);%>
+            <td ><small class = "text-muted"><%=item.author%></small></td>
+            <%if(currentUser.role == "directAdmin" || currentUser.role == "dinamicAdmin"||currentUser.role == "caja"){%>
+
+              <td>
+                <div class="number-input">
+                  <button class="minus2"></button>
+                  <input class="quantity updateDiscount" min="0" name="quantity" value="<%=item.discount%>" type="number">
+                  <button class="plus2"></button>
+                </div>
+                % 
+                <button class="btn btn-sm btn-discount-inactive btn-secondary discount-button"><i class="fas fa-cog submitDiscount"></i></button>
+              </td>              
+              <td>$ <%=numberCommas(subtotal)%> 
+                <%total+=subtotal%>
+                <span class = "float-right buttons">
+                  <button type="button"  class="delete-item btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
+                  <button type="button"  class="edit-item btn btn-sm btn-outline-info"><i class="fas fa-edit"></i></button>
+                </span>
+              </td>
+              <td>
+                <select id="moneyBox<%=item.trans_id%>" class="btn btn-outline-secondary btn-lg custom-select ml-2" name="moneyBox" style="max-width: 300px">
+                  <% for (let box of boxes) { %>
+                    <option <%= item.relatedBox && item.relatedBox._id && item.relatedBox._id.equals(box._id) ? 'selected' : '' %> id="<%= box._id %>" value="<%= box._id %>" data-hierarchy="<%= box.hierarchy %>"><%= box.name %></option>
+                  <% } %>
+                </select>
+              </td>
+              
+              
+            <%}else{%>
+            <%if(currentUser.username == (item.author)){%>
+              <td>
+                <span class = "float-right buttons">
+                <button type="button"  class="delete-item btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
+                <button type="button"  class="edit-item btn btn-sm btn-outline-info"><i class="fas fa-edit"></i></button>
+                </span>
+              </td>
+            <%}else{%>
+              <td></td>
+            <%}
+            total+=subtotal
+            }%>
+          </tr>
+        <%}%>
+      </tbody>
+    </table>
+    <br>
+    <br>
+    <%if(currentUser.role == "directAdmin" || currentUser.role == "dinamicAdmin"|| (currDate.getHours()<6 || currDate.getHours()>19)){%>
+    <h1 class="text-center display-5"><i class="fas fa-hourglass-start"></i></h1>
+    <table id="accountStatus" class="table table-responsive-sm sticky2">
+      <thead>
+        <tr>
+          <th>Nombre
+          </th>
+          <th>Inicio
+          </th>
+          <th>Hasta
+          </th>
+          <th>Cantidad
+          </th>
+          <%if(currentUser.role == "directAdmin" || currentUser.role == "dinamicAdmin"|| (currDate.getHours()<6 || currDate.getHours()>19)){%>
+            <th>Subtotal
+            </th>
+          <%}else{%>
+            <th>Corregir
+            </th>
+          <%}%>
+          <th>Modo
+          </th>
+          <th>Caja</th>
+        </tr>
+      </thead>
+
+
+      <tbody class = "timeBody">
+        <%for(let item of timeElements){%>
+          <%let act = (item.toggle == true)?"":"active";
+          let dis = (item.toggle == true)?"":"disabled"
+          %>
+          <tr>
+            <td class= "item-name" alt = "<%=item._id%>"><%=item.name%></td>
+            <%let price = (item.service_type == "supply")?item.sell_price:item.price %>
+              <td><input type="datetime-local" id="start"
+                name="meeting-time" value = "<%=item.consumtionDate.toISOString().substring(0, 16)%>" alt= "<%=item.toggle%>"></td>
+            <td><input type="datetime-local" id="until"
+              name="meeting-time" value = "<%=item.terminalDate.toISOString().substring(0, 16)%>" alt= "<%=item.toggle%>"></td>
+            <td>X <span class = "item-amount" id="transID" alt = "<%=item.trans_id%>"><%=item.amount%></span></td>
+            <%
+            let subtotal = +(item.amount*price).toFixed(2);
+            %>
+            <td>$ <%=numberCommas(subtotal)%><%total+=subtotal%>
+            </td>
+            
+            <td>
+              <div class="df-switch">
+                <button type="button" class="btn btn-lg btn-toggle <%=act%>"  role = "button" data-toggle="button" aria-pressed="true" autocomplete="on">
+                  <div class="inner-handle"></div>
+                  <div class="handle"></div>
+                </button>
+              </div>
+              <div class = " buttons">
+                <button type="button"  class="delete-item btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
+              </div>
+            </td> 
+            <td>
+              <select id="moneyBox<%=item.trans_id%>" class="btn btn-outline-secondary btn-lg custom-select ml-2" name="moneyBox" style="max-width: 300px">
+                <% for (let box of boxes) { %>
+                  <option <%= item.relatedBox && item.relatedBox._id && item.relatedBox._id.equals(box._id) ? 'selected' : '' %> id="<%= box._id %>" value="<%= box._id %>" data-hierarchy="<%= box.hierarchy %>"><%= box.name %></option>
+                <% } %>
+              </select>
+            </td>
+            
+          </tr>
+        <%}%>
+      </tbody>
+    </table>
+    <%}
+    %>
+    <%if(currentUser.role == "directAdmin" || currentUser.role == "dinamicAdmin" || (currentUser.role == "caja")||(currentUser.role == "medico" )){%>
+      <div class="container ">
+        <%total = +(total).toFixed(2)%>
+        
+        <h2 class = "float-right font-italic border border-secondary rounded"><span class = "mx-2 my-2">Total: $<%=numberCommas(total)%></span></h2>
+      </div>
+    <%}%>
+    <div class="container">
+      <%
+      const b = begin.toISOString().substring(0,10);
+      const e = end.toISOString().substring(0,10);
+      %>
+      <a href = "/patients/<%=patient._id%>/makePDF?begin=<%=b%>&end=<%=e%>&name=<%=patient.name%>&role=<%=currentUser.role%>">
+        <button type="button" class="btn btn-outline-secondary"><i class="fas fa-file-pdf"></i></button>
+        </a>
+        <%if(currentUser.role == 'directAdmin'){%>
+        <form class="d-inline" action="/patients/<%=patient._id%>/discharge?_method=PUT" method="POST">
+          <button class="btn btn-outline-warning ml-1">Dar de alta</button>
+        </form>
+        <%}
+      
+  
+  if(patient.payed == false && (currentUser.role == 'directAdmin' ||currentUser.role == 'caja') ){%>
+    <form class="d-inline" action="/patients/<%=patient._id%>/pay?_method=PUT" method="POST">
+      <input class="form-control" type="text" id="totalCharged" name="totalCharged" value="<%=total%>" required style="display:none;">
+      <button class="btn btn-outline-danger ml-1">Cobrada <i class="fas fa-dollar-sign"></i></button>
+    </form>
+    <%}else{
+      if (flag || currentUser.role == 'directAdmin' ) {%>
+        <button id="printTicketBtn" class="btn btn-outline-info ml-1">
+          <i class="fas fa-print"></i>Ticket
+        </button>
+  <%}}%>  
+    
+    </div>
+  </div>
+</div>
+<select id="changeAllBoxes" class="btn btn-outline-secondary btn-lg custom-select ml-2" name="changeAllBoxes" style="max-width: 300px">
+  <% for (let box of boxes) {
+    %>
+      <option <%= currentUser.moneyBox._id.equals(box._id) ? 'selected' : '' %>  id="<%= box._id %>" value="<%= box._id %>" data-hierarchy="<%= box.hierarchy %>"><%= box.name %></option>
+  <% } %>
+</select>
+
+
+<!-- Modal for complete display of services by search query -->
+<div class="modal fade" id="exampleModalCenter" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="exampleModalCenterTitle">Servicios encontrados</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true" class = "sp">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+            <table class = "table" id = "searchTableModal">
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="close btn btn-secondary" data-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="col-12 my-4 d-flex justify-content-center">
+    <div class="col-6">
+      <div class="row">
+        <div class="col-12">
+          <div class="btn-group">
+            <button type="button" name="options" class="btn btn-secondary todays" > Hoy</button>
+            <button type="button"  name="options" class="btn btn-secondary tillToday"> Total</button>
+            <button type="button"  name="options" class="btn btn-secondary otherDate"> Elegir</button>
+          </div>
+        </div>
+        <div class="col-12 mt-4">
+          <div class="row offset-md-2">
+            <div class="col-5">
+              <label class = "font-weight-bold">De</label>
+              <input type="date" name="beginDay" id = "beginDate" class="form-control">
+              <input type="time" name="beginHour"  value = <%=(bH)?bH:"00:01:00"%> id = "beginHour" class="form-control">
+            </div>
+            <div class="col-5">
+              <label class = "font-weight-bold">Hasta</label>
+              <input type="date" name="endDay"  id = "endDate" class="form-control">
+              <input type="time" name="endHour"  value = <%=(eH)?eH:"23:59:00"%> id = "endHour" class="form-control">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-2">
+      <div class="row">
+        <button type="button" class="btn btn-success apply_dates">Aplicar fechas</button>
+      </div>
+    </div>
+  </div>
+
+  
+   
+<script src="/javascripts/search_in_account.js" defer></script>
+
+
